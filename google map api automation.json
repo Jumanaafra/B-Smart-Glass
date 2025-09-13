@@ -1,0 +1,257 @@
+{
+  "name": "google map api automation",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "d33c4e58-9c01-44c7-907e-a5028cd014d0",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "2c83b214-4ae5-4fd8-b398-3dd06556d3ca",
+      "name": "Webhook",
+      "webhookId": "d33c4e58-9c01-44c7-907e-a5028cd014d0"
+    },
+    {
+      "parameters": {
+        "url": "=https://maps.googleapis.com/maps/api/directions/json?origin={{ JSON.parse($('model1').item.json.text).origin }}&destination={{ JSON.parse($('model1').item.json.text).destination }}&mode=transit&key=AIzaSyDolSmdk3L9YLsa5kl3DgBynsGOu2dnuN0",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        736,
+        16
+      ],
+      "id": "9600defd-d7ab-4a36-90b0-0c407111e5d3",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "const apiResponse = $json;\n\n// Check if any routes were returned\nif (!apiResponse.routes || apiResponse.routes.length === 0) {\n  return { error: \"Sorry, I couldn't find a route.\" };\n}\n\nconst firstRoute = apiResponse.routes[0];\nconst firstLeg = firstRoute.legs[0];\n\n// Find the first step that is a transit step\nconst transitStep = firstLeg.steps.find(step => step.travel_mode === 'TRANSIT');\n\nif (!transitStep) {\n  return { error: \"Sorry, I couldn't find a direct bus or train route.\" };\n}\n\n// Extract the key details\nconst details = {\n  departure_stop: transitStep.transit_details.departure_stop.name,\n  departure_time: transitStep.transit_details.departure_time.text,\n  arrival_stop: transitStep.transit_details.arrival_stop.name,\n  arrival_time: transitStep.transit_details.arrival_time.text,\n  line_name: transitStep.transit_details.line.name,\n  line_vehicle: transitStep.transit_details.line.vehicle.name,\n  headsign: transitStep.transit_details.headsign,\n  num_stops: transitStep.transit_details.num_stops\n};\n\n\nreturn details;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        928,
+        16
+      ],
+      "id": "44f6f71e-660b-48f6-b457-7963bb761bc3",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "{{ $json.query }}",
+        "messages": {
+          "messageValues": [
+            {
+              "type": "HumanMessagePromptTemplate",
+              "message": "=Based on the following data, generate a short, friendly, and conversational response for a voice assistant.\n\nData:\n{{ JSON.stringify($('Code').item.json) }}"
+            },
+            {
+              "message": "You are a helpful AI travel assistant. Your task is to convert structured transit data into a natural, easy-to-understand sentence. Be concise.  Example Input Data: {\"departure_stop\":\"Central Bus Station\",\"departure_time\":\"12:15pm\",\"arrival_stop\":\"Market Square\",\"arrival_time\":\"12:45pm\",\"line_name\":\"Cross-Town Express\",\"line_vehicle\":\"Bus\",\"headsign\":\"Downtown\",\"num_stops\":7}  Example Output: The next bus is the Cross-Town Express towards Downtown. It departs from the Central Bus Station at 12:15 PM and will have 7 stops."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        1120,
+        16
+      ],
+      "id": "0e34e9b3-3f63-4bdb-b2d0-86b448c1c4fe",
+      "name": "Basic LLM Chain1"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1120,
+        272
+      ],
+      "id": "b087ef9f-cd27-4973-afc8-ed85b5de19c5",
+      "name": "OpenAI Chat Model1",
+      "credentials": {
+        "openAiApi": {
+          "id": "d270KLGxvL7mwcRg",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseKey": "={\n  \"response\": \"{{ $json.text }}\"\n}"
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1472,
+        16
+      ],
+      "id": "0dea9f89-0cfa-4a96-b978-8eb9b1b2a990",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        496,
+        272
+      ],
+      "id": "c0bac4b5-ba6b-4da0-9d98-e8a76f924e19",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "d270KLGxvL7mwcRg",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.body.query }}",
+        "messages": {
+          "messageValues": [
+            {
+              "type": "HumanMessagePromptTemplate",
+              "message": "={{ $json.body.query }}"
+            },
+            {
+              "message": "=You are an expert system that extracts travel request details from user queries. Your task is to identify the user's origin, destination, and mode of transport (bus or train). The current time is {{ new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }) }}. The user's current location is chennai, Tamil Nadu, India.  If the user mentions \"here\" or \"my location\" for the origin, use the user's current location. If the user wants a bus or train, set the mode to \"transit\".  Respond ONLY with a JSON object with the following keys: \"origin\", \"destination\", \"mode\". Do not add any other text or explanation.  Example Query: \"What's the next train to Chennai from here?\" Example JSON Output: {   \"origin\": \"chennai, Tamil Nadu, India\",   \"destination\": \"Chennai, Tamil Nadu, India\",   \"mode\": \"transit\" }"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        384,
+        16
+      ],
+      "id": "987e4c77-5b13-453c-8a13-6cbc2b2a3d0c",
+      "name": "model1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "model1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain1": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "model1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "model1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "5f7c54ce-cdd5-4549-b08d-81e5894b2e98",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5d0b44df5a7f3891e293ff60e392de1aab75247dc1e44d183ea6fbe0365b0c4e"
+  },
+  "id": "LyW4M5WQCk5YLbuv",
+  "tags": []
+}
